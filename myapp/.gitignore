@@ -1,0 +1,11 @@
+# Ignore Python & SQLite
+backend/__pycache__/
+backend/database.db
+backend/uploads/
+
+# Ignore Node modules
+node_modules/
+myapp/node_modules/
+frontend/node_modules/
+dist/
+.env
