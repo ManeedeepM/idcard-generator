@@ -1,69 +1,41 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for
 import os
 from werkzeug.utils import secure_filename
 
+# Create Flask app instance
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend requests
 
-# Configure upload folder
-UPLOAD_FOLDER = 'uploads'
+# Upload folder setup
+UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Initialize the SQLite database
-def init_db():
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            department TEXT NOT NULL,
-            photo TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# API to upload form data and image
-@app.route('/upload', methods=['POST'])
-def upload():
-    name = request.form['name']
-    department = request.form['department']
-    photo = request.files['photo']
-
-    # Save image securely
-    filename = secure_filename(photo.filename)
-    photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    photo.save(photo_path)
-
-    # Save data to SQLite
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO users (name, department, photo) VALUES (?, ?, ?)",
-              (name, department, filename))
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        'name': name,
-        'department': department,
-        'photo_url': f'/uploads/{filename}'
-    })
-
-# Serve uploaded image files
-@app.route('/uploads/<filename>')
-def serve_image(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-# Homepage test route
+# Home page route
 @app.route('/')
-def home():
-    return "✅ Flask backend is running!"
+def index():
+    return render_template('index.html')
 
-# Run the server
+# Route to handle form submission
+@app.route('/generate', methods=['POST'])
+def generate_id():
+    name = request.form.get('name')
+    college = request.form.get('college')
+    email = request.form.get('email')
+    photo = request.files.get('photo')
+
+    filename = None
+    if photo:
+        filename = secure_filename(photo.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        photo.save(filepath)
+
+    return render_template('idcard.html', name=name, college=college, email=email, photo=filename)
+
+# Serve uploaded images
+@app.route('/static/uploads/<filename>')
+def uploaded_file(filename):
+    return redirect(url_for('static', filename='uploads/' + filename), code=301)
+
+# Run locally
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
